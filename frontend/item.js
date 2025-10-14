@@ -74,7 +74,80 @@ function renderListing(listing, category) {
         document.getElementById('listingPhoneContainer').style.display = 'block';
     }
     
+    // Show last edited time if available
+    if (listing.last_edited_at) {
+        const editedDiv = document.createElement('p');
+        editedDiv.innerHTML = `<small><i>Last edited: ${formatDate(listing.last_edited_at)}</i></small>`;
+        document.getElementById('listingDetails').appendChild(editedDiv);
+    }
+    
+    // Check if current user owns this post
+    const user = localStorage.getItem('user');
+    if (user) {
+        try {
+            const userData = JSON.parse(user);
+            if (listing.user_id && userData.id && listing.user_id === userData.id) {
+                // User owns this post, show edit/delete buttons
+                showOwnerButtons(category, listing.id);
+            }
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+        }
+    }
+    
     document.getElementById('listingDetails').style.display = 'block';
+}
+
+// Show edit/delete buttons for post owner
+function showOwnerButtons(category, postId) {
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.style.marginTop = '20px';
+    buttonsDiv.innerHTML = `
+        <button type="button" id="editButton" onclick="editPost('${category}', ${postId})">Edit Post</button>
+        <button type="button" id="deleteButton" onclick="deletePost('${category}', ${postId})">Delete Post</button>
+    `;
+    document.getElementById('listingDetails').appendChild(buttonsDiv);
+}
+
+// Edit post
+function editPost(category, postId) {
+    window.location.href = `edit.html?category=${category}&id=${postId}`;
+}
+
+// Delete post
+async function deletePost(category, postId) {
+    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+        return;
+    }
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('You must be logged in to delete posts');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/posts/${category}/${postId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            alert('Post deleted successfully!');
+            // Redirect to homepage
+            window.location.href = 'index.html';
+        } else {
+            alert('Error: ' + (result.error || 'Failed to delete post'));
+        }
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        alert('Error deleting post. Please try again.');
+    }
 }
 
 // Initialize page
