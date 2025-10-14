@@ -1,0 +1,30 @@
+[Unit]
+Description=RIT Trading Backend Server
+After=network.target
+Documentation=https://github.com/greenturtle537/rit-trading
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/trading/backend
+ExecStart=/usr/bin/perl /var/www/trading/backend/server.pl
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rit-trading
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/trading/backend
+
+# Environment
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="PERL5LIB=/var/www/trading/backend/local/lib/perl5"
+
+[Install]
+WantedBy=multi-user.target
