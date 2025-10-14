@@ -62,25 +62,6 @@ systemctl reset-failed
 
 echo ""
 echo -e "${GREEN}Service uninstalled successfully.${NC}"
-echo ""
-
-# Ask about removing installation directory
-read -p "Do you want to remove the installation directory ($INSTALL_DIR)? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if [ -d "$INSTALL_DIR" ]; then
-        # Create backup before removing
-        BACKUP_DIR="$INSTALL_DIR.backup.$(date +%Y%m%d_%H%M%S)"
-        echo -e "${YELLOW}Creating backup at $BACKUP_DIR...${NC}"
-        mv "$INSTALL_DIR" "$BACKUP_DIR"
-        echo -e "${GREEN}Installation directory backed up and removed.${NC}"
-        echo "Backup location: $BACKUP_DIR"
-    else
-        echo "Installation directory not found. Nothing to remove."
-    fi
-else
-    echo "Installation directory preserved at: $INSTALL_DIR"
-fi
-
+echo "Installation directory preserved at: $INSTALL_DIR"
 echo ""
 echo -e "${GREEN}Uninstall complete!${NC}"

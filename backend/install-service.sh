@@ -46,25 +46,12 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Create installation directory if it doesn't exist
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}Creating installation directory...${NC}"
-    mkdir -p "$INSTALL_DIR"
+# Verify backend directory exists
+if [ ! -d "$BACKEND_DIR" ]; then
+    echo -e "${RED}Error: Backend directory not found at $BACKEND_DIR${NC}"
+    echo "Please ensure the repository is cloned to $INSTALL_DIR"
+    exit 1
 fi
-
-# Copy backend files to installation directory
-echo -e "${YELLOW}Copying backend files...${NC}"
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-if [ -d "$BACKEND_DIR" ]; then
-    echo "Backend directory already exists. Creating backup..."
-    BACKUP_DIR="$BACKEND_DIR.backup.$(date +%Y%m%d_%H%M%S)"
-    mv "$BACKEND_DIR" "$BACKUP_DIR"
-    echo "Backup created at: $BACKUP_DIR"
-fi
-
-# Copy backend directory
-cp -r "$SCRIPT_DIR" "$BACKEND_DIR"
 
 # Set correct permissions
 echo -e "${YELLOW}Setting permissions...${NC}"
