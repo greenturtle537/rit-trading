@@ -2,13 +2,39 @@
 <html>
 <head>
     <title>RIT Trading</title>
-    <meta http-equiv="refresh" content="0; url=/trading">
     <link rel="icon" type="image/x-icon" href="favicon.png">
 </head>
 <body>
-    <p>Redirecting to <a href="/trading">RIT Trading</a>...</p>
-    <script>
-        window.location.href = '/trading';
-    </script>
+    <b>RIT Trading</b> 
+    <a href="login.html"><button type="button" id="loginButton">Login/Signup</button></a>
+    <a href="admin.html" style="display: none;"><button type="button" id="adminButton">Moderation Panel</button></a>
+    <span id="userWelcome" style="margin-left: 20px;"></span>
+    
+    <hr>
+
+    <table border="0"  cellpadding="5">
+        <tr>
+            <td width ="30%">
+                <img src="logo.png" alt="RIT Trading Logo" width="50%" height="50%">
+                <br>
+                <a href="ad.html"><button type="button" id="postAd">Post Ad</button></a>
+            </td>
+            <td>
+                <b>select a category:</b>
+                <br><br>
+                <table border="0" cellpadding="2" id="categoryTable">
+                    <!-- All categories in one column -->
+                </table>
+            </td>
+
+        </tr>
+
+    </table>
+    
+    <hr>
+    
+    <p><small>&copy; 2025 Glitch Technologies</small></p>
+
+    <script src="main.js"></script>
 </body>
 </html>
