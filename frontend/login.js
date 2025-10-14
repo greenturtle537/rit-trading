@@ -1,5 +1,16 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:3000';
+// Backend API configuration
+function getApiUrl() {
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    if (port && port !== '80' && port !== '443') {
+        return 'http://localhost:3000/api';
+    }
+    
+    return '/trading/api';
+}
+
+const API_URL = getApiUrl();
 
 // Handle Login Form Submission
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -13,7 +24,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     messageDiv.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -78,7 +89,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        const response = await fetch(`${API_URL}/auth/signup`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
