@@ -1,6 +1,17 @@
 -- RIT Trading Database Schema (Structure Only)
 -- This file creates tables and categories but does NOT insert test data
 
+-- Users table (plaintext passwords for now)
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    name TEXT NOT NULL,
+    auth_token TEXT UNIQUE,
+    user_role TEXT DEFAULT 'user' CHECK(user_role IN ('user', 'moderator', 'admin')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

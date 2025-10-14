@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post Ad - RIT Trading</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+</head>
+<body>
+    <b>RIT Trading</b> <a href="index.html"><button type="button">Home</button></a>
+    
+    <hr>
+    
+    <h2>Post New Ad</h2>
+    
+    <div id="loginWarning" style="display: none; background-color: #ffcccc; padding: 10px; margin-bottom: 10px;">
+        <p><b>You must be logged in to post an ad.</b> <a href="login.html">Login or Sign Up</a></p>
+    </div>
+    
+    <table border="0" cellpadding="10">
+        <tr>
+            <td valign="top">
+                <form id="adForm">
+                    <table border="0" cellpadding="5">
+                        <tr>
+                            <td><b>Category:</b></td>
+                            <td>
+                                <select id="category" name="category" required style="width: 300px;">
+                                    <option value="">-- Select a category --</option>
+                                    <option value="electronics">Electronics</option>
+                                    <option value="furniture">Furniture</option>
+                                    <option value="cars_trucks">Cars & Trucks</option>
+                                    <option value="books">Books</option>
+                                    <option value="free_stuff">Free Stuff</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><b>Title:</b></td>
+                            <td><input type="text" id="title" name="title" required size="50" maxlength="100"></td>
+                        </tr>
+                        <tr>
+                            <td valign="top"><b>Description:</b></td>
+                            <td><textarea id="description" name="description" rows="6" cols="50"></textarea></td>
+                        </tr>
+                        <tr>
+                            <td><b>Price:</b></td>
+                            <td>
+                                $<input type="number" id="price" name="price" step="0.01" min="0" size="20" placeholder="0.00">
+                                <br><small>(Leave blank or set to 0 for free items)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><b>Location:</b></td>
+                            <td><input type="text" id="location" name="location" size="50" placeholder="e.g., Campus Center, Dorm Name, etc."></td>
+                        </tr>
+                        <tr>
+                            <td><b>Contact Email:</b></td>
+                            <td><input type="email" id="contactEmail" name="contactEmail" size="50" required></td>
+                        </tr>
+                        <tr>
+                            <td><b>Contact Phone:</b></td>
+                            <td><input type="tel" id="contactPhone" name="contactPhone" size="50" placeholder="(optional)"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <button type="submit">Post Ad</button>
+                                <button type="button" onclick="window.location.href='index.html'">Cancel</button>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+                <div id="adMessage"></div>
+            </td>
+            
+            <td valign="top" width="300">
+                <h3>Posting Guidelines</h3>
+                <ul>
+                    <li>Be honest and accurate in your description</li>
+                    <li>Include all relevant details</li>
+                    <li>Set a fair price</li>
+                    <li>Provide accurate contact information</li>
+                    <li>Use "Free Stuff" category for items you're giving away</li>
+                    <li>No illegal items or services</li>
+                    <li>Be respectful to potential buyers</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+    
+    <hr>
+    
+    <p><small>&copy; 2025 Glitch Technologies</small></p>
+    
+    <script src="ad.js"></script>
+</body>
+</html>

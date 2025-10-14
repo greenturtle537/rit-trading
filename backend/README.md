@@ -72,6 +72,43 @@ The script includes:
 - Colored output for easy reading
 - Error handling and validation
 
+## User Management
+
+### Setting User Roles
+
+Use the `set-user-role.pl` script to change a user's role:
+
+```bash
+perl set-user-role.pl <email> <role>
+```
+
+**Available roles:**
+- `user` - Regular user (default for new signups)
+- `moderator` - Moderator privileges
+- `admin` - Administrator privileges
+
+**Examples:**
+
+Make a user an administrator:
+```bash
+perl set-user-role.pl admin@rit.edu admin
+```
+
+Make a user a moderator:
+```bash
+perl set-user-role.pl user@rit.edu moderator
+```
+
+Change back to regular user:
+```bash
+perl set-user-role.pl user@rit.edu user
+```
+
+The script will:
+- Verify the user exists in the database
+- Validate the role is valid
+- Update the user's role
+- Display confirmation with old and new role
 
 ## Database Schema
 

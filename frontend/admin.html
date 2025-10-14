@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Moderation Panel - RIT Trading</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .user-card {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .user-header {
+            background-color: #e0e0e0;
+            padding: 10px;
+            margin: -15px -15px 15px -15px;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+        }
+        .user-info {
+            margin-bottom: 10px;
+        }
+        .user-info strong {
+            display: inline-block;
+            width: 100px;
+        }
+        .posts-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .post-item {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            position: relative;
+        }
+        .post-item.deleted {
+            background-color: #ffebee;
+            border-color: #ef5350;
+            opacity: 0.7;
+        }
+        .post-category {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .delete-post-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-post-btn:hover {
+            background-color: #c82333;
+        }
+        .delete-post-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .deleted-badge {
+            display: inline-block;
+            background-color: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .no-posts {
+            color: #888;
+            font-style: italic;
+        }
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        .back-button, .logout-button {
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <b>Moderation Panel - RIT Trading</b>
+            <a href="index.html"><button type="button" class="back-button">Back to Home</button></a>
+        </div>
+        <div>
+            <span id="adminName"></span>
+            <button type="button" class="logout-button" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    
+    <hr>
+
+    <div id="errorMessage" style="display: none;" class="error-message"></div>
+    <div id="loadingMessage" class="loading">Loading users and posts...</div>
+    <div id="usersContainer"></div>
+    
+    <hr>
+    
+    <p><small>&copy; 2025 Glitch Technologies</small></p>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -20,8 +20,48 @@ const API_URL = getApiUrl();
 // Category data - will be fetched from backend
 let categories = [];
 
+// Check user authentication and role
+function checkUserAuth() {
+    const user = localStorage.getItem('user');
+    
+    if (user) {
+        try {
+            const userData = JSON.parse(user);
+            
+            // Update login button to show user's name
+            const loginButton = document.getElementById('loginButton');
+            if (loginButton) {
+                loginButton.textContent = 'Logout';
+                loginButton.onclick = function() {
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    window.location.reload();
+                    return false;
+                };
+            }
+            
+            // Show welcome message
+            const welcomeSpan = document.getElementById('userWelcome');
+            if (welcomeSpan) {
+                welcomeSpan.textContent = `Welcome, ${userData.name}!`;
+            }
+            
+            // Show admin button if user is admin or moderator
+            if (userData.role === 'admin' || userData.role === 'moderator') {
+                const adminButtonLink = document.querySelector('a[href="admin.html"]');
+                if (adminButtonLink) {
+                    adminButtonLink.style.display = 'inline';
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+        }
+    }
+}
+
 // Initialize the page
 async function init() {
+    checkUserAuth();
     await fetchCategories();
     renderCategories();
 }
@@ -48,17 +88,9 @@ async function fetchCategories() {
     }
 }
 
-// Render categories in columns
+// Render categories in one column
 function renderCategories() {
-    // Since we have 5 categories, distribute them: 2, 2, 1
-    const column1 = categories.slice(0, 2);
-    const column2 = categories.slice(2, 4);
-    const column3 = categories.slice(4);
-    
-    // Populate each column
-    populateColumn('categoryTable1', column1);
-    populateColumn('categoryTable2', column2);
-    populateColumn('categoryTable3', column3);
+    populateColumn('categoryTable', categories);
 }
 
 // Populate a table column with categories
