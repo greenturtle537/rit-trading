@@ -24,7 +24,7 @@ fi
 
 # Configuration
 SERVICE_NAME="rit-trading"
-INSTALL_DIR="/var/www/trading"
+INSTALL_DIR="/glitchtech/rit-trading"
 BACKEND_DIR="$INSTALL_DIR/backend"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 SERVICE_USER="www-data"
