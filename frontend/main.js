@@ -88,9 +88,31 @@ async function fetchCategories() {
     }
 }
 
-// Render categories in one column
+// Render categories in three columns
 function renderCategories() {
-    populateColumn('categoryTable', categories);
+    // Organize categories into three groups based on their purpose
+    const forSale = [];
+    const services = [];
+    const lookingFor = [];
+    
+    categories.forEach(category => {
+        const name = category.name.toLowerCase();
+        const tableName = category.table_name.toLowerCase();
+        
+        // Categorize based on name patterns
+        if (name.includes('looking for') || name.includes('wanted') || tableName.includes('looking') || tableName.includes('wanted')) {
+            lookingFor.push(category);
+        } else if (name.includes('service') || name.includes('hire') || name.includes('tutor') || tableName.includes('service') || tableName.includes('hire')) {
+            services.push(category);
+        } else {
+            // Default to "for sale"
+            forSale.push(category);
+        }
+    });
+    
+    populateColumn('forSaleTable', forSale);
+    populateColumn('servicesTable', services);
+    populateColumn('lookingForTable', lookingFor);
 }
 
 // Populate a table column with categories

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Post - RIT Trading</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+</head>
+<body>
+    <b>RIT Trading</b> - <a href="index.html">Home</a>
+    <hr>
+
+    <h2>Edit Post</h2>
+    
+    <div id="editForm">
+        <form id="postForm">
+            <table border="0" cellpadding="5">
+                <tr>
+                    <td><b>Title:</b></td>
+                    <td><input type="text" id="title" name="title" size="50" required></td>
+                </tr>
+                <tr>
+                    <td valign="top"><b>Description:</b></td>
+                    <td><textarea id="description" name="description" rows="6" cols="50" required></textarea></td>
+                </tr>
+                <tr>
+                    <td><b>Price:</b></td>
+                    <td>$<input type="number" id="price" name="price" step="0.01" min="0"></td>
+                </tr>
+                <tr>
+                    <td><b>Location:</b></td>
+                    <td><input type="text" id="location" name="location" size="50"></td>
+                </tr>
+                <tr>
+                    <td><b>Contact Email:</b></td>
+                    <td><input type="email" id="contact_email" name="contact_email" size="50"></td>
+                </tr>
+                <tr>
+                    <td><b>Contact Phone:</b></td>
+                    <td><input type="tel" id="contact_phone" name="contact_phone" size="20"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <button type="submit" id="saveButton">Save Changes</button>
+                        <button type="button" id="cancelButton">Cancel</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+
+    <div id="message"></div>
+
+    <hr>
+    <p><small>&copy; 2025 Glitch Technologies</small></p>
+
+    <script src="edit.js"></script>
+</body>
+</html>

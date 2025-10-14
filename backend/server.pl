@@ -119,22 +119,26 @@ sub get_listing_by_id {
 
 # Create new listing in a category
 sub create_listing {
-    my ($dbh, $category, $data) = @_;
+    my ($dbh, $category, $data, $user) = @_;
     
     my $table = get_table_for_category($dbh, $category);
     return undef unless $table;
     
+    # Default contact_email to user's email if not provided
+    my $contact_email = $data->{contact_email} || $user->{email};
+    
     my $sth = $dbh->prepare(qq{
-        INSERT INTO $table (title, description, price, location, contact_email, contact_phone)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO $table (user_id, title, description, price, location, contact_email, contact_phone)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     });
     
     $sth->execute(
+        $user->{id},
         $data->{title},
         $data->{description},
         $data->{price},
         $data->{location},
-        $data->{contact_email},
+        $contact_email,
         $data->{contact_phone}
     );
     
@@ -294,10 +298,10 @@ sub get_all_users_with_posts {
         
         # Search for posts by this user in all category tables
         while (my ($table_name) = $cat_sth->fetchrow_array) {
-            # Try to find posts by contact_email matching user's email
-            my $posts_sth = $dbh->prepare("SELECT * FROM $table_name WHERE contact_email = ? ORDER BY created_at DESC");
+            # Find posts by user_id
+            my $posts_sth = $dbh->prepare("SELECT * FROM $table_name WHERE user_id = ? ORDER BY created_at DESC");
             eval {
-                $posts_sth->execute($user->{email});
+                $posts_sth->execute($user->{id});
                 
                 while (my $post = $posts_sth->fetchrow_hashref) {
                     # Add category information to the post
@@ -305,7 +309,7 @@ sub get_all_users_with_posts {
                     push @posts, $post;
                 }
             };
-            # Silently continue if table doesn't have contact_email column
+            # Silently continue if there's an error
         }
         
         # Add posts to user object
@@ -359,6 +363,104 @@ sub delete_post {
     };
 }
 
+# Update a post (user owner only)
+sub update_post {
+    my ($dbh, $category, $post_id, $data, $user) = @_;
+    
+    my $table = get_table_for_category($dbh, $category);
+    return { error => 'Category not found' } unless $table;
+    
+    # Check if post exists and belongs to user
+    my $sth = $dbh->prepare("SELECT id, user_id FROM $table WHERE id = ?");
+    $sth->execute($post_id);
+    my $post = $sth->fetchrow_hashref;
+    
+    unless ($post) {
+        return { error => 'Post not found' };
+    }
+    
+    # Verify ownership
+    unless ($post->{user_id} == $user->{id}) {
+        return { error => 'You can only edit your own posts' };
+    }
+    
+    # Update the post
+    my $update_sth = $dbh->prepare(qq{
+        UPDATE $table 
+        SET title = ?,
+            description = ?,
+            price = ?,
+            location = ?,
+            contact_email = ?,
+            contact_phone = ?,
+            last_edited_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    });
+    
+    eval {
+        $update_sth->execute(
+            $data->{title},
+            $data->{description},
+            $data->{price},
+            $data->{location},
+            $data->{contact_email},
+            $data->{contact_phone},
+            $post_id
+        );
+    };
+    
+    if ($@) {
+        return { error => "Failed to update post: $@" };
+    }
+    
+    return { 
+        success => 1, 
+        message => 'Post updated successfully',
+        post_id => $post_id,
+        category => $category
+    };
+}
+
+# Delete a post as owner (user only)
+sub delete_own_post {
+    my ($dbh, $category, $post_id, $user) = @_;
+    
+    my $table = get_table_for_category($dbh, $category);
+    return { error => 'Category not found' } unless $table;
+    
+    # Check if post exists and belongs to user
+    my $sth = $dbh->prepare("SELECT id, user_id FROM $table WHERE id = ?");
+    $sth->execute($post_id);
+    my $post = $sth->fetchrow_hashref;
+    
+    unless ($post) {
+        return { error => 'Post not found' };
+    }
+    
+    # Verify ownership
+    unless ($post->{user_id} == $user->{id}) {
+        return { error => 'You can only delete your own posts' };
+    }
+    
+    # Delete the post
+    my $delete_sth = $dbh->prepare("DELETE FROM $table WHERE id = ?");
+    
+    eval {
+        $delete_sth->execute($post_id);
+    };
+    
+    if ($@) {
+        return { error => "Failed to delete post: $@" };
+    }
+    
+    return { 
+        success => 1, 
+        message => 'Post deleted successfully',
+        post_id => $post_id,
+        category => $category
+    };
+}
+
 # Send JSON response
 sub send_json {
     my ($conn, $status, $data) = @_;
@@ -366,7 +468,7 @@ sub send_json {
     my $response = HTTP::Response->new($status);
     $response->header('Content-Type' => 'application/json');
     $response->header('Access-Control-Allow-Origin' => '*');
-    $response->header('Access-Control-Allow-Methods' => 'GET, POST, OPTIONS');
+    $response->header('Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS');
     $response->header('Access-Control-Allow-Headers' => 'Content-Type, Authorization');
     $response->content($json);
     $conn->send_response($response);
@@ -384,7 +486,7 @@ while (my $conn = $daemon->accept) {
         if ($method eq 'OPTIONS') {
             my $response = HTTP::Response->new(RC_OK);
             $response->header('Access-Control-Allow-Origin' => '*');
-            $response->header('Access-Control-Allow-Methods' => 'GET, POST, OPTIONS');
+            $response->header('Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS');
             $response->header('Access-Control-Allow-Headers' => 'Content-Type, Authorization');
             $conn->send_response($response);
             next;
@@ -454,11 +556,55 @@ while (my $conn = $daemon->accept) {
                 my $category = $1;
                 my $content = $request->content;
                 my $data = decode_json($content);
-                my $result = create_listing($dbh, $category, $data);
+                my $result = create_listing($dbh, $category, $data, $user);
                 if (defined $result) {
                     send_json($conn, RC_CREATED, $result);
                 } else {
                     send_json($conn, RC_NOT_FOUND, { error => 'Category not found' });
+                }
+            }
+            # Route: PUT /api/posts/:category/:id - Update a post (user owner)
+            elsif ($method eq 'PUT' && $path =~ m{^/api/posts/(\w+)/(\d+)$}) {
+                # Verify authentication token
+                my $token = get_token_from_header($request);
+                my $user = verify_token($dbh, $token);
+                
+                unless ($user) {
+                    send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
+                    next;
+                }
+                
+                my ($category, $post_id) = ($1, $2);
+                my $content = $request->content;
+                my $data = decode_json($content);
+                
+                my $result = update_post($dbh, $category, $post_id, $data, $user);
+                
+                if ($result->{error}) {
+                    send_json($conn, RC_BAD_REQUEST, $result);
+                } else {
+                    send_json($conn, RC_OK, $result);
+                }
+            }
+            # Route: DELETE /api/posts/:category/:id - Delete own post (user owner)
+            elsif ($method eq 'DELETE' && $path =~ m{^/api/posts/(\w+)/(\d+)$}) {
+                # Verify authentication token
+                my $token = get_token_from_header($request);
+                my $user = verify_token($dbh, $token);
+                
+                unless ($user) {
+                    send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
+                    next;
+                }
+                
+                my ($category, $post_id) = ($1, $2);
+                
+                my $result = delete_own_post($dbh, $category, $post_id, $user);
+                
+                if ($result->{error}) {
+                    send_json($conn, RC_BAD_REQUEST, $result);
+                } else {
+                    send_json($conn, RC_OK, $result);
                 }
             }
             # Route: GET /api/admin/users - Get all users and their posts (admin/moderator)
