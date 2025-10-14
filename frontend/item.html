@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RIT Trading - Listing</title>
+</head>
+<body>
+    <h2>rit trading</h2>
+    <p><b>rochester, ny</b> &gt; <span id="categoryName"></span></p>
+    
+    <hr>
+    
+    <p><a href="index.html">back to categories</a> | <a href="#" id="backToListings">back to category</a></p>
+    
+    <div id="loadingMessage">loading...</div>
+    <div id="errorMessage" style="display:none; color: red;"></div>
+    
+    <table border="0" cellpadding="10" id="listingDetails" style="display:none;">
+        <tr>
+            <td>
+                <h3 id="listingTitle"></h3>
+                <p><b>Price:</b> <span id="listingPrice"></span></p>
+                <p><b>Location:</b> <span id="listingLocation"></span></p>
+                <p><b>Posted:</b> <span id="listingDate"></span></p>
+                <hr>
+                <p id="listingDescription"></p>
+                <hr>
+                <p><b>Contact Information:</b></p>
+                <p>Email: <span id="listingEmail"></span></p>
+                <p id="listingPhoneContainer" style="display:none;">Phone: <span id="listingPhone"></span></p>
+            </td>
+        </tr>
+    </table>
+    
+    <hr>
+    
+    <p><small>&copy; 2025 Glitch Technologies</small></p>
+
+    <script src="item.js"></script>
+</body>
+</html>

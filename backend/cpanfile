@@ -1,0 +1,5 @@
+requires 'DBI';
+requires 'DBD::SQLite';
+requires 'HTTP::Daemon';
+requires 'JSON';
+requires 'URI';

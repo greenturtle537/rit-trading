@@ -1,0 +1,21 @@
+[Unit]
+Description=RIT Trading Perl Backend Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/rit-trading/backend
+ExecStart=/usr/bin/perl /var/www/rit-trading/backend/server.pl
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
