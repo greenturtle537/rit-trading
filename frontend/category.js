@@ -12,7 +12,7 @@ function getApiUrl() {
     }
     
     // Production with Apache (standard HTTP/HTTPS ports or no port)
-    return '/api';
+    return '/trading/api';
 }
 
 const API_URL = getApiUrl();
