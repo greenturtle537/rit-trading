@@ -17,6 +17,32 @@ function getApiUrl() {
 
 const API_URL = getApiUrl();
 
+// Utility function to fetch with retry logic
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            console.warn(`Fetch attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    throw lastError;
+}
+
 // Get category from URL parameter
 function getCategoryFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -52,10 +78,7 @@ function formatDate(dateString) {
 // Fetch listings from backend
 async function fetchListings(category) {
     try {
-        const response = await fetch(`${API_URL}/listings/${category}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch listings');
-        }
+        const response = await fetchWithRetry(`${API_URL}/listings/${category}`);
         const listings = await response.json();
         return listings;
     } catch (error) {
@@ -140,7 +163,7 @@ async function init() {
         renderListings(listings);
     } catch (error) {
         document.getElementById('loadingMessage').style.display = 'none';
-        document.getElementById('errorMessage').textContent = 'error loading listings. make sure the backend server is running.';
+        document.getElementById('errorMessage').textContent = 'Error loading listings after multiple attempts. Please refresh the page to try again.';
         document.getElementById('errorMessage').style.display = 'block';
     }
 }

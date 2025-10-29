@@ -12,6 +12,32 @@ function getApiUrl() {
 
 const API_URL = getApiUrl();
 
+// Utility function to fetch with retry logic
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            console.warn(`Fetch attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    throw lastError;
+}
+
 // Check authentication and admin access on page load
 async function checkAdminAccess() {
     const user = localStorage.getItem('user');
@@ -20,7 +46,7 @@ async function checkAdminAccess() {
     if (!user || !token) {
         showError('You must be logged in to access this page.');
         setTimeout(() => {
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
         }, 2000);
         return false;
     }
@@ -31,7 +57,7 @@ async function checkAdminAccess() {
     if (userData.role !== 'admin' && userData.role !== 'moderator') {
         showError('Access denied. You must be an administrator or moderator to view this page.');
         setTimeout(() => {
-            window.location.href = 'index.html';
+            window.location.replace('index.html');
         }, 2000);
         return false;
     }
@@ -56,7 +82,7 @@ async function fetchAllUsersAndPosts() {
     const token = localStorage.getItem('token');
     
     try {
-        const response = await fetch(`${API_URL}/admin/users`, {
+        const response = await fetchWithRetry(`${API_URL}/admin/users`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -64,17 +90,12 @@ async function fetchAllUsersAndPosts() {
             }
         });
         
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to fetch users');
-        }
-        
         const users = await response.json();
         displayUsers(users);
         
     } catch (error) {
         console.error('Error fetching users:', error);
-        showError(`Error: ${error.message}. Make sure the backend server is running.`);
+        showError(`Error: ${error.message}. Failed to load users after multiple attempts. Please refresh the page.`);
     }
 }
 
@@ -200,7 +221,7 @@ function formatDate(dateString) {
 function logout() {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    window.location.href = 'index.html';
+    window.location.replace('index.html');
 }
 
 // Delete a post (admin only)

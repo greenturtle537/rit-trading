@@ -19,9 +19,22 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     const messageDiv = document.getElementById('loginMessage');
+    const submitButton = e.target.querySelector('button[type="submit"]');
     
     // Clear previous messages
     messageDiv.innerHTML = '';
+    
+    // Disable submit button and show loading state
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.style.opacity = '0.5';
+        submitButton.style.cursor = 'not-allowed';
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Logging in...';
+        submitButton.dataset.originalText = originalText;
+    }
+    
+    messageDiv.innerHTML = '<p style="color: blue;">Logging in...</p>';
     
     try {
         const response = await fetch(`${API_URL}/auth/login`, {
@@ -51,15 +64,31 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             
             // Redirect to home page after 1 second
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.replace('index.html');
             }, 1000);
         } else {
             // Login failed
             messageDiv.innerHTML = `<p style="color: red;">Login failed: ${data.error || 'Unknown error'}</p>`;
+            
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.style.opacity = '1';
+                submitButton.style.cursor = 'pointer';
+                submitButton.textContent = submitButton.dataset.originalText || 'Login';
+            }
         }
     } catch (error) {
         console.error('Login error:', error);
-        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Make sure the backend is running.</p>`;
+        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Please try again.</p>`;
+        
+        // Re-enable submit button
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.style.opacity = '1';
+            submitButton.style.cursor = 'pointer';
+            submitButton.textContent = submitButton.dataset.originalText || 'Login';
+        }
     }
 });
 
@@ -72,6 +101,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
     const name = document.getElementById('signupName').value;
     const messageDiv = document.getElementById('signupMessage');
+    const submitButton = e.target.querySelector('button[type="submit"]');
     
     // Clear previous messages
     messageDiv.innerHTML = '';
@@ -87,6 +117,18 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
         messageDiv.innerHTML = '<p style="color: red;">Password must be at least 6 characters long!</p>';
         return;
     }
+    
+    // Disable submit button and show loading state
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.style.opacity = '0.5';
+        submitButton.style.cursor = 'not-allowed';
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Creating account...';
+        submitButton.dataset.originalText = originalText;
+    }
+    
+    messageDiv.innerHTML = '<p style="color: blue;">Creating account...</p>';
     
     try {
         const response = await fetch(`${API_URL}/auth/signup`, {
@@ -110,19 +152,43 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
             // Clear the form
             document.getElementById('signupForm').reset();
             
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.style.opacity = '1';
+                submitButton.style.cursor = 'pointer';
+                submitButton.textContent = submitButton.dataset.originalText || 'Sign Up';
+            }
+            
             // Optionally auto-login or redirect after a delay
             setTimeout(() => {
                 // You could either auto-login here or just clear the message
                 messageDiv.innerHTML = '<p style="color: green;">Please login with your new account.</p>';
-                // Or redirect: window.location.href = 'index.html';
+                // Or redirect: window.location.replace('index.html');
             }, 2000);
         } else {
             // Signup failed
             messageDiv.innerHTML = `<p style="color: red;">Signup failed: ${data.error || 'Unknown error'}</p>`;
+            
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.style.opacity = '1';
+                submitButton.style.cursor = 'pointer';
+                submitButton.textContent = submitButton.dataset.originalText || 'Sign Up';
+            }
         }
     } catch (error) {
         console.error('Signup error:', error);
-        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Make sure the backend is running.</p>`;
+        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Please try again.</p>`;
+        
+        // Re-enable submit button
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.style.opacity = '1';
+            submitButton.style.cursor = 'pointer';
+            submitButton.textContent = submitButton.dataset.originalText || 'Sign Up';
+        }
     }
 });
 

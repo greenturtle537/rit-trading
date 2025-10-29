@@ -20,6 +20,32 @@ const API_URL = getApiUrl();
 // Category data - will be fetched from backend
 let categories = [];
 
+// Utility function to fetch with retry logic
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            console.warn(`Fetch attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    throw lastError;
+}
+
 // Check user authentication and role
 function checkUserAuth() {
     const user = localStorage.getItem('user');
@@ -61,22 +87,41 @@ function checkUserAuth() {
 
 // Initialize the page
 async function init() {
+    // Show loading message
+    const loadingDiv = document.getElementById('loadingMessage');
+    const errorDiv = document.getElementById('errorMessage');
+    
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (errorDiv) errorDiv.style.display = 'none';
+    
     checkUserAuth();
     await fetchCategories();
     renderCategories();
+    
+    // Hide loading message once complete
+    if (loadingDiv) loadingDiv.style.display = 'none';
 }
 
 // Fetch categories from backend
 async function fetchCategories() {
     try {
-        const response = await fetch(`${API_URL}/categories`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch categories');
-        }
+        const response = await fetchWithRetry(`${API_URL}/categories`);
         categories = await response.json();
         console.log('Categories loaded:', categories);
+        
+        // Clear any error messages
+        const errorDiv = document.getElementById('errorMessage');
+        if (errorDiv) errorDiv.style.display = 'none';
     } catch (error) {
         console.error('Error fetching categories:', error);
+        
+        // Show error message
+        const errorDiv = document.getElementById('errorMessage');
+        if (errorDiv) {
+            errorDiv.textContent = 'Error loading categories. Please refresh the page to try again.';
+            errorDiv.style.display = 'block';
+        }
+        
         // Fallback to hardcoded categories if backend is down
         categories = [
             { name: 'electronics', table_name: 'electronics', listing_count: 0 },

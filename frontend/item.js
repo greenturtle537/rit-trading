@@ -17,6 +17,32 @@ function getApiUrl() {
 
 const API_URL = getApiUrl();
 
+// Utility function to fetch with retry logic
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            console.warn(`Fetch attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    throw lastError;
+}
+
 // Get parameters from URL
 function getURLParams() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -48,10 +74,7 @@ function formatDate(dateString) {
 // Fetch listing from backend
 async function fetchListing(category, id) {
     try {
-        const response = await fetch(`${API_URL}/${category}/${id}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch listing');
-        }
+        const response = await fetchWithRetry(`${API_URL}/${category}/${id}`);
         const listing = await response.json();
         return listing;
     } catch (error) {
@@ -111,7 +134,7 @@ function showOwnerButtons(category, postId) {
 
 // Edit post
 function editPost(category, postId) {
-    window.location.href = `edit.html?category=${category}&id=${postId}`;
+    window.location.replace(`edit.html?category=${category}&id=${postId}`);
 }
 
 // Delete post
@@ -123,8 +146,20 @@ async function deletePost(category, postId) {
     const token = localStorage.getItem('token');
     if (!token) {
         alert('You must be logged in to delete posts');
-        window.location.href = 'login.html';
+        window.location.replace('login.html');
         return;
+    }
+
+    const deleteButton = document.getElementById('deleteButton');
+    
+    // Disable delete button and show loading state
+    if (deleteButton) {
+        deleteButton.disabled = true;
+        deleteButton.style.opacity = '0.5';
+        deleteButton.style.cursor = 'not-allowed';
+        const originalText = deleteButton.textContent;
+        deleteButton.textContent = 'Deleting...';
+        deleteButton.dataset.originalText = originalText;
     }
 
     try {
@@ -140,13 +175,29 @@ async function deletePost(category, postId) {
         if (response.ok && result.success) {
             alert('Post deleted successfully!');
             // Redirect to homepage
-            window.location.href = 'index.html';
+            window.location.replace('index.html');
         } else {
             alert('Error: ' + (result.error || 'Failed to delete post'));
+            
+            // Re-enable delete button
+            if (deleteButton) {
+                deleteButton.disabled = false;
+                deleteButton.style.opacity = '1';
+                deleteButton.style.cursor = 'pointer';
+                deleteButton.textContent = deleteButton.dataset.originalText || 'Delete Post';
+            }
         }
     } catch (error) {
         console.error('Error deleting post:', error);
         alert('Error deleting post. Please try again.');
+        
+        // Re-enable delete button
+        if (deleteButton) {
+            deleteButton.disabled = false;
+            deleteButton.style.opacity = '1';
+            deleteButton.style.cursor = 'pointer';
+            deleteButton.textContent = deleteButton.dataset.originalText || 'Delete Post';
+        }
     }
 }
 
@@ -174,7 +225,7 @@ async function init() {
         document.title = listing.title + ' - RIT Trading';
     } catch (error) {
         document.getElementById('loadingMessage').style.display = 'none';
-        document.getElementById('errorMessage').textContent = 'error loading listing. make sure the backend server is running.';
+        document.getElementById('errorMessage').textContent = 'Error loading listing after multiple attempts. Please refresh the page to try again.';
         document.getElementById('errorMessage').style.display = 'block';
     }
 }

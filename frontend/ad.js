@@ -45,6 +45,7 @@ document.getElementById('adForm').addEventListener('submit', async (e) => {
     const contactEmail = document.getElementById('contactEmail').value;
     const contactPhone = document.getElementById('contactPhone').value;
     const messageDiv = document.getElementById('adMessage');
+    const submitButton = e.target.querySelector('button[type="submit"]');
     
     // Clear previous messages
     messageDiv.innerHTML = '';
@@ -54,6 +55,18 @@ document.getElementById('adForm').addEventListener('submit', async (e) => {
         messageDiv.innerHTML = '<p style="color: red;">Please select a category!</p>';
         return;
     }
+    
+    // Disable submit button and show loading state
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.style.opacity = '0.5';
+        submitButton.style.cursor = 'not-allowed';
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Posting...';
+        submitButton.dataset.originalText = originalText;
+    }
+    
+    messageDiv.innerHTML = '<p style="color: blue;">Posting ad...</p>';
     
     try {
         const token = localStorage.getItem('token');
@@ -82,23 +95,39 @@ document.getElementById('adForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            // Ad posted successfully
-            messageDiv.innerHTML = '<p style="color: green;"><b>Ad posted successfully!</b> Redirecting to category page...</p>';
-            
-            // Clear the form
+            // Clear the form first
             document.getElementById('adForm').reset();
             
-            // Redirect to the category page after 2 seconds
-            setTimeout(() => {
-                window.location.href = `category.html?category=${category}`;
-            }, 2000);
+            // Redirect to the newly posted ad
+            if (data.id) {
+                window.location.replace(`item.html?category=${category}&id=${data.id}`);
+            } else {
+                // Fallback to category page if ID is not available
+                window.location.replace(`category.html?category=${category}`);
+            }
         } else {
             // Failed to post ad
             messageDiv.innerHTML = `<p style="color: red;">Failed to post ad: ${data.error || 'Unknown error'}</p>`;
+            
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.style.opacity = '1';
+                submitButton.style.cursor = 'pointer';
+                submitButton.textContent = submitButton.dataset.originalText || 'Post Ad';
+            }
         }
     } catch (error) {
         console.error('Error posting ad:', error);
-        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Make sure the backend is running.</p>`;
+        messageDiv.innerHTML = `<p style="color: red;">Error: Could not connect to server. Please try again.</p>`;
+        
+        // Re-enable submit button
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.style.opacity = '1';
+            submitButton.style.cursor = 'pointer';
+            submitButton.textContent = submitButton.dataset.originalText || 'Post Ad';
+        }
     }
 });
 
