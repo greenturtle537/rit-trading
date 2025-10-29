@@ -12,7 +12,7 @@ use POSIX qw(strftime);
 # Configuration
 my $PORT = 3000;
 my $DB_PATH = 'rit-trading.db';
-my $LOG_FILE = '/var/log/rit-trading.log';
+my $LOG_FILE = 'rit-trading.log';
 my $LOG_FH;
 
 # Ensure log directory exists and create log file if needed

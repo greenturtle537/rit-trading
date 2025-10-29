@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 DB_PATH="rit-trading.db"
-SERVER_LOG="/var/log/rit-trading.log"
+SERVER_LOG="rit-trading.log"
 PORT=3000
 
 # Colors for output
