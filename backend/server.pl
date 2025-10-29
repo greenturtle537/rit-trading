@@ -7,10 +7,46 @@ use HTTP::Status;
 use JSON;
 use URI;
 use Digest::SHA qw(sha256_hex);
+use POSIX qw(strftime);
 
 # Configuration
 my $PORT = 3000;
 my $DB_PATH = 'rit-trading.db';
+my $LOG_FILE = '/var/log/rit-trading.log';
+my $LOG_FH;
+
+# Ensure log directory exists and create log file if needed
+my $log_dir = '/var/log';
+unless (-d $log_dir) {
+    mkdir $log_dir or warn "Could not create log directory $log_dir: $!";
+}
+
+# Open log file for appending, create if doesn't exist
+unless (open($LOG_FH, '>>', $LOG_FILE)) {
+    warn "Cannot open log file $LOG_FILE: $! - Logging to STDERR instead";
+    # Fall back to STDERR if we can't write to log file
+    open($LOG_FH, '>&', \*STDERR) or die "Cannot redirect to STDERR: $!";
+}
+# Autoflush log file
+select((select($LOG_FH), $| = 1)[0]);
+
+# Logging function
+sub log_message {
+    my ($level, $message) = @_;
+    my $timestamp = strftime("%Y-%m-%d %H:%M:%S", localtime);
+    my $log_line = "[$timestamp] [$level] $message\n";
+    print $LOG_FH $log_line;
+    print STDERR $log_line if $level eq 'ERROR';
+}
+
+# Log request
+sub log_request {
+    my ($method, $path, $status, $client_ip) = @_;
+    my $timestamp = strftime("%Y-%m-%d %H:%M:%S", localtime);
+    my $log_line = sprintf("[%s] %s %s - %s - %s\n", 
+        $timestamp, $client_ip || 'unknown', $method, $path, $status);
+    print $LOG_FH $log_line;
+}
 
 # Create HTTP daemon
 my $daemon = HTTP::Daemon->new(
@@ -18,6 +54,7 @@ my $daemon = HTTP::Daemon->new(
     ReuseAddr => 1,
 ) || die "Failed to create HTTP daemon: $!";
 
+log_message('INFO', "Server starting on port $PORT");
 print "Server running at: ", $daemon->url, "\n";
 print "API endpoints:\n";
 print "  POST /api/auth/signup - Create new user account\n";
@@ -28,6 +65,7 @@ print "  GET  /api/:category/:id - Get single listing from category\n";
 print "  POST /api/listings/:category - Create new listing in category\n";
 print "  GET  /api/admin/users - Get all users and their posts (admin/moderator)\n";
 print "  POST /api/admin/posts/delete - Delete/redact a post (admin/moderator)\n";
+log_message('INFO', "Server started successfully at " . $daemon->url);
 
 # Database connection
 sub get_db {
@@ -476,11 +514,14 @@ sub send_json {
 
 # Handle requests
 while (my $conn = $daemon->accept) {
+    my $client_ip = $conn->peerhost();
+    
     while (my $request = $conn->get_request) {
         my $method = $request->method;
         my $path = $request->uri->path;
         my $uri = URI->new($request->uri);
         my %query = $uri->query_form;
+        my $response_status = RC_OK;
 
         # Handle CORS preflight
         if ($method eq 'OPTIONS') {
@@ -489,6 +530,7 @@ while (my $conn = $daemon->accept) {
             $response->header('Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS');
             $response->header('Access-Control-Allow-Headers' => 'Content-Type, Authorization');
             $conn->send_response($response);
+            log_request($method, $path, RC_OK, $client_ip);
             next;
         }
 
@@ -499,10 +541,15 @@ while (my $conn = $daemon->accept) {
             if ($method eq 'POST' && $path eq '/api/auth/signup') {
                 my $content = $request->content;
                 my $data = decode_json($content);
+                log_message('INFO', "Signup attempt for email: " . ($data->{email} || 'unknown'));
                 my $result = create_user($dbh, $data);
                 if ($result->{error}) {
+                    log_message('WARN', "Signup failed: " . $result->{error});
+                    $response_status = RC_BAD_REQUEST;
                     send_json($conn, RC_BAD_REQUEST, $result);
                 } else {
+                    log_message('INFO', "User created successfully: " . $data->{email});
+                    $response_status = RC_CREATED;
                     send_json($conn, RC_CREATED, $result);
                 }
             }
@@ -510,16 +557,22 @@ while (my $conn = $daemon->accept) {
             elsif ($method eq 'POST' && $path eq '/api/auth/login') {
                 my $content = $request->content;
                 my $data = decode_json($content);
+                log_message('INFO', "Login attempt for email: " . ($data->{email} || 'unknown'));
                 my $result = login_user($dbh, $data);
                 if ($result->{error}) {
+                    log_message('WARN', "Login failed for " . ($data->{email} || 'unknown') . ": " . $result->{error});
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, $result);
                 } else {
+                    log_message('INFO', "Login successful for: " . $data->{email});
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $result);
                 }
             }
             # Route: GET /api/categories
             elsif ($method eq 'GET' && $path eq '/api/categories') {
                 my $categories = get_categories($dbh);
+                $response_status = RC_OK;
                 send_json($conn, RC_OK, $categories);
             }
             # Route: GET /api/listings/:category
@@ -527,8 +580,11 @@ while (my $conn = $daemon->accept) {
                 my $category = $1;
                 my $listings = get_listings_by_category($dbh, $category);
                 if (defined $listings) {
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $listings);
                 } else {
+                    log_message('WARN', "Category not found: $category");
+                    $response_status = RC_NOT_FOUND;
                     send_json($conn, RC_NOT_FOUND, { error => 'Category not found' });
                 }
             }
@@ -537,8 +593,11 @@ while (my $conn = $daemon->accept) {
                 my ($category, $id) = ($1, $2);
                 my $listing = get_listing_by_id($dbh, $category, $id);
                 if ($listing) {
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $listing);
                 } else {
+                    log_message('WARN', "Listing not found: $category/$id");
+                    $response_status = RC_NOT_FOUND;
                     send_json($conn, RC_NOT_FOUND, { error => 'Listing not found' });
                 }
             }
@@ -549,6 +608,8 @@ while (my $conn = $daemon->accept) {
                 my $user = verify_token($dbh, $token);
                 
                 unless ($user) {
+                    log_message('WARN', "Unauthorized listing creation attempt for category: $1");
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
                     next;
                 }
@@ -556,10 +617,15 @@ while (my $conn = $daemon->accept) {
                 my $category = $1;
                 my $content = $request->content;
                 my $data = decode_json($content);
+                log_message('INFO', "User " . $user->{email} . " creating listing in: $category");
                 my $result = create_listing($dbh, $category, $data, $user);
                 if (defined $result) {
+                    log_message('INFO', "Listing created in $category by " . $user->{email});
+                    $response_status = RC_CREATED;
                     send_json($conn, RC_CREATED, $result);
                 } else {
+                    log_message('WARN', "Failed to create listing in $category - category not found");
+                    $response_status = RC_NOT_FOUND;
                     send_json($conn, RC_NOT_FOUND, { error => 'Category not found' });
                 }
             }
@@ -570,6 +636,8 @@ while (my $conn = $daemon->accept) {
                 my $user = verify_token($dbh, $token);
                 
                 unless ($user) {
+                    log_message('WARN', "Unauthorized update attempt for $1/$2");
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
                     next;
                 }
@@ -578,11 +646,16 @@ while (my $conn = $daemon->accept) {
                 my $content = $request->content;
                 my $data = decode_json($content);
                 
+                log_message('INFO', "User " . $user->{email} . " updating post: $category/$post_id");
                 my $result = update_post($dbh, $category, $post_id, $data, $user);
                 
                 if ($result->{error}) {
+                    log_message('WARN', "Update failed for $category/$post_id: " . $result->{error});
+                    $response_status = RC_BAD_REQUEST;
                     send_json($conn, RC_BAD_REQUEST, $result);
                 } else {
+                    log_message('INFO', "Post updated successfully: $category/$post_id");
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $result);
                 }
             }
@@ -593,17 +666,24 @@ while (my $conn = $daemon->accept) {
                 my $user = verify_token($dbh, $token);
                 
                 unless ($user) {
+                    log_message('WARN', "Unauthorized delete attempt for $1/$2");
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
                     next;
                 }
                 
                 my ($category, $post_id) = ($1, $2);
                 
+                log_message('INFO', "User " . $user->{email} . " deleting post: $category/$post_id");
                 my $result = delete_own_post($dbh, $category, $post_id, $user);
                 
                 if ($result->{error}) {
+                    log_message('WARN', "Delete failed for $category/$post_id: " . $result->{error});
+                    $response_status = RC_BAD_REQUEST;
                     send_json($conn, RC_BAD_REQUEST, $result);
                 } else {
+                    log_message('INFO', "Post deleted successfully: $category/$post_id");
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $result);
                 }
             }
@@ -614,18 +694,24 @@ while (my $conn = $daemon->accept) {
                 my $user = verify_token($dbh, $token);
                 
                 unless ($user) {
+                    log_message('WARN', "Unauthorized admin access attempt");
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
                     next;
                 }
                 
                 # Verify user has admin or moderator role
                 unless ($user->{user_role} && ($user->{user_role} eq 'admin' || $user->{user_role} eq 'moderator')) {
+                    log_message('WARN', "Forbidden admin access attempt by " . $user->{email});
+                    $response_status = RC_FORBIDDEN;
                     send_json($conn, RC_FORBIDDEN, { error => 'Access denied. Administrator or moderator privileges required.' });
                     next;
                 }
                 
                 # Get all users with their posts
+                log_message('INFO', "Admin " . $user->{email} . " viewing all users");
                 my $users = get_all_users_with_posts($dbh);
+                $response_status = RC_OK;
                 send_json($conn, RC_OK, $users);
             }
             # Route: POST /api/admin/posts/delete - Delete/redact a post (admin/moderator)
@@ -635,12 +721,16 @@ while (my $conn = $daemon->accept) {
                 my $user = verify_token($dbh, $token);
                 
                 unless ($user) {
+                    log_message('WARN', "Unauthorized admin delete attempt");
+                    $response_status = RC_UNAUTHORIZED;
                     send_json($conn, RC_UNAUTHORIZED, { error => 'Authentication required. Please log in.' });
                     next;
                 }
                 
                 # Verify user has admin or moderator role
                 unless ($user->{user_role} && ($user->{user_role} eq 'admin' || $user->{user_role} eq 'moderator')) {
+                    log_message('WARN', "Forbidden admin delete attempt by " . $user->{email});
+                    $response_status = RC_FORBIDDEN;
                     send_json($conn, RC_FORBIDDEN, { error => 'Access denied. Administrator or moderator privileges required.' });
                     next;
                 }
@@ -650,30 +740,43 @@ while (my $conn = $daemon->accept) {
                 my $data = decode_json($content);
                 
                 unless ($data->{category} && $data->{post_id}) {
+                    log_message('WARN', "Admin delete missing parameters");
+                    $response_status = RC_BAD_REQUEST;
                     send_json($conn, RC_BAD_REQUEST, { error => 'Category and post_id are required' });
                     next;
                 }
                 
                 # Delete/redact the post
+                log_message('INFO', "Admin " . $user->{email} . " deleting post: " . $data->{category} . "/" . $data->{post_id});
                 my $result = delete_post($dbh, $data->{category}, $data->{post_id});
                 
                 if ($result->{error}) {
+                    log_message('WARN', "Admin delete failed: " . $result->{error});
+                    $response_status = RC_BAD_REQUEST;
                     send_json($conn, RC_BAD_REQUEST, $result);
                 } else {
+                    log_message('INFO', "Post deleted by admin: " . $data->{category} . "/" . $data->{post_id});
+                    $response_status = RC_OK;
                     send_json($conn, RC_OK, $result);
                 }
             }
             # 404 Not Found
             else {
+                log_message('WARN', "404 Not Found: $method $path");
+                $response_status = RC_NOT_FOUND;
                 send_json($conn, RC_NOT_FOUND, { error => 'Not found' });
             }
 
             $dbh->disconnect();
         };
         if ($@) {
-            print STDERR "Error: $@\n";
+            log_message('ERROR', "Exception in $method $path: $@");
+            $response_status = RC_INTERNAL_SERVER_ERROR;
             send_json($conn, RC_INTERNAL_SERVER_ERROR, { error => 'Internal server error' });
         }
+        
+        # Log the request
+        log_request($method, $path, $response_status, $client_ip);
     }
     $conn->close;
     undef($conn);

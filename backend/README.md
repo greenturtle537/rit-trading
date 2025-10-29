@@ -45,6 +45,8 @@ perl server.pl
 
 The server will run on `http://localhost:3000`
 
+**Logging:** All requests and errors are automatically logged to `/var/log/rit-trading.log`
+
 ## Deployment Script
 
 The `deploy.sh` script handles complete setup and deployment:
@@ -166,6 +168,62 @@ The following categories are available (from the `categories` table):
 
 Each category has its own dedicated table in the database.
 
+## Monitoring & Debugging Tool
+
+### Monitor Script (`monitor.sh`)
+
+A comprehensive all-in-one monitoring and database inspection tool with an interactive menu and command-line interface.
+
+**Interactive Mode:**
+```bash
+./monitor.sh
+```
+
+**Command-Line Mode:**
+```bash
+# Server status and monitoring
+./monitor.sh status             # Server status & database size
+./monitor.sh watch              # Live API monitoring (requires sudo)
+./monitor.sh logs               # Watch server logs with highlighting
+./monitor.sh errors             # View error logs
+
+# View users and listings
+./monitor.sh users              # List all users
+./monitor.sh user 1             # User details
+./monitor.sh categories         # List categories
+./monitor.sh listings electronics  # Category listings
+./monitor.sh listing electronics 5 # Listing details
+
+# Search and activity
+./monitor.sh search "laptop"    # Search all listings
+./monitor.sh recent             # Recent activity
+./monitor.sh stats              # Database statistics
+
+# Advanced
+./monitor.sh query              # Custom SQL queries
+./monitor.sh help               # Show help
+./monitor.sh version            # Show version
+```
+
+**Features:**
+- Live API request monitoring with tcpdump
+- Real-time server log watching with syntax highlighting
+- Database statistics and analytics
+- User management and inspection
+- Category and listing browsing
+- Full-text search across all categories
+- Error log viewing
+- Custom SQL query execution
+- Color-coded output for readability
+- Multiple usage modes (CLI + Interactive)
+
+**Quick Help:**
+```bash
+./monitor.sh help    # Show detailed help and quick reference
+```
+
+For complete documentation, see [MONITOR_README.md](MONITOR_README.md)
+
 ## Example Usage
 
 Get all categories:
@@ -194,4 +252,35 @@ curl -X POST http://localhost:3000/api/listings/books \
     "location": "Rochester, NY",
     "contact_email": "test@example.com"
   }'
+```
+
+## Development Workflow
+
+**1. Start the server:**
+```bash
+perl server.pl
+```
+
+All requests and errors are automatically logged to `/var/log/rit-trading.log`
+
+**2. In another terminal, monitor in real-time:**
+```bash
+./monitor.sh status          # Check everything is running
+./monitor.sh recent          # See recent activity
+./monitor.sh logs            # Watch live server logs
+sudo ./monitor.sh watch      # Watch live API requests
+```
+
+**3. Inspect the database:**
+```bash
+./monitor.sh users           # View all users
+./monitor.sh stats           # Database statistics
+./monitor.sh search "term"   # Search listings
+```
+
+**4. Debug issues:**
+```bash
+./monitor.sh errors          # View error logs
+./monitor.sh query           # Run custom SQL queries
+./monitor.sh help            # Show quick reference
 ```
