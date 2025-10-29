@@ -448,6 +448,80 @@ execute_query() {
     echo ""
 }
 
+# Check database schema for issues
+check_schema() {
+    print_header "DATABASE SCHEMA CHECK"
+    
+    if [ ! -f "$DB_PATH" ]; then
+        print_error "Database not found at $DB_PATH"
+        return 1
+    fi
+    
+    print_info "Checking all category tables for required columns..."
+    echo ""
+    
+    # Get all category tables
+    TABLES=$(sqlite3 "$DB_PATH" "SELECT table_name FROM categories;" 2>/dev/null)
+    
+    if [ -z "$TABLES" ]; then
+        print_warning "No categories found in database"
+        return 1
+    fi
+    
+    REQUIRED_COLS="id user_id title description price location contact_email contact_phone created_at last_edited_at"
+    HAS_ISSUES=0
+    
+    for table in $TABLES; do
+        echo -e "${BOLD}Checking table: $table${NC}"
+        
+        # Get actual column count that matches required columns
+        ACTUAL_COLS=$(sqlite3 "$DB_PATH" "PRAGMA table_info($table);" 2>/dev/null | cut -d'|' -f2 | tr '\n' ' ')
+        
+        if [ -z "$ACTUAL_COLS" ]; then
+            echo -e "${RED}  [ERROR] Table does not exist or cannot be read${NC}"
+            HAS_ISSUES=1
+            continue
+        fi
+        
+        # Check each required column
+        MISSING=""
+        for col in $REQUIRED_COLS; do
+            if ! echo " $ACTUAL_COLS " | grep -q " ${col} "; then
+                if [ -z "$MISSING" ]; then
+                    MISSING="$col"
+                else
+                    MISSING="$MISSING, $col"
+                fi
+            fi
+        done
+        
+        if [ -n "$MISSING" ]; then
+            echo -e "${RED}  [ERROR] Missing columns: $MISSING${NC}"
+            HAS_ISSUES=1
+        else
+            echo -e "${GREEN}  [OK] All required columns present${NC}"
+        fi
+        
+        # Show count
+        COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM $table;" 2>/dev/null)
+        echo -e "  Records: $COUNT"
+        echo ""
+    done
+    
+    if [ $HAS_ISSUES -eq 1 ]; then
+        echo -e "${RED}${BOLD}SCHEMA ISSUES FOUND!${NC}"
+        echo ""
+        print_warning "To fix schema issues, run:"
+        echo "  ${BOLD}perl fix-schema.pl${NC}"
+        echo ""
+        print_info "This will recreate tables with correct schema while preserving data"
+        return 1
+    else
+        echo -e "${GREEN}${BOLD}All tables have correct schema!${NC}"
+        return 0
+    fi
+}
+
 # Show error log (if exists)
 show_errors() {
     print_header "SERVER ERROR LOG"
@@ -511,10 +585,12 @@ SEARCH & STATS
   search <term>                   Search all listings
   stats                           Database statistics
   query                           Custom SQL query (interactive)
+  schema                          Check database schema for issues
   
   Examples:
     ./monitor.sh search "laptop"
     ./monitor.sh stats
+    ./monitor.sh schema
 
 OTHER COMMANDS
 -------------------------------------------------------------------------------
@@ -760,9 +836,10 @@ show_menu() {
     echo ""
     echo -e "${BOLD}Debugging:${NC}"
     echo " 13) Show Server Error Log"
+    echo " 14) Check Database Schema"
     echo ""
     echo -e "${BOLD}Help:${NC}"
-    echo " 14) Show Help / Quick Reference"
+    echo " 15) Show Help / Quick Reference"
     echo ""
     echo "  0) Exit"
     echo ""
@@ -788,7 +865,8 @@ main_menu() {
             11) show_stats; read -p "Press Enter to continue..." ;;
             12) execute_query; read -p "Press Enter to continue..." ;;
             13) show_errors; read -p "Press Enter to continue..." ;;
-            14) show_help; read -p "Press Enter to continue..." ;;
+            14) check_schema; read -p "Press Enter to continue..." ;;
+            15) show_help; read -p "Press Enter to continue..." ;;
             0) 
                 echo -e "\n${GREEN}Goodbye!${NC}\n"
                 exit 0
@@ -851,6 +929,9 @@ else
         errors)
             show_errors
             ;;
+        schema)
+            check_schema
+            ;;
         help|--help|-h)
             show_help
             ;;
@@ -872,12 +953,12 @@ else
             echo "  listings <category> - Show listings in category"
             echo "  listing <cat> <id>  - Show listing details"
             echo "  recent              - Show recent activity"
-            echo "  search <term>       - Search listings"
+            echo "  search <term>       - Search all listings"
             echo "  stats               - Show database statistics"
             echo "  query               - Execute custom SQL query"
-            echo "  errors              - Show server error log"
+            echo "  errors              - Show error log"
+            echo "  schema              - Check database schema for issues"
             echo "  help                - Show detailed help"
-            echo "  version             - Show version information"
             echo ""
             echo "Run without arguments for interactive menu"
             exit 1
